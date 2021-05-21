@@ -1,157 +1,103 @@
 # Anime4K
 
-Anime4K is a state-of-the-art*, open-source, high-quality real-time anime upscaling algorithm that can be implemented in any programming language.
+Anime4K is a set of open-source, high-quality real-time anime upscaling/denoising algorithms that can be implemented in any programming language.
+
+The simplicity and speed of Anime4K allows the user to watch upscaled anime in real time, as we believe in preserving original content and promoting freedom of choice for all anime fans. Re-encoding anime into 4K should be avoided as it is non-reversible, potentially damages original content by introducing artifacts, takes up to O(n<sup>2</sup>) more disk space and more importantly, does so without any meaningful decrease in entropy (lost information is lost).
+
 
 ![Thumbnail Image](results/Main.png?raw=true)
 
-*\*State of the art as of August 2019 in the real-time anime 4K upscaling category, the fastest at achieving reasonable quality. We do not claim this is a superior quality general purpose SISR algorithm compared to machine learning approaches.*
-
 ***Disclaimer: All art assets used are for demonstration and educational purposes. All rights are reserved to their original owners. If you (as a person or a company) own the art and do not wish it to be associated with this project, please contact us at 	anime4k.upscale@gmail.com and we will gladly take it down.***
 
-![Comparison](results/Comparisons/1_time.png?raw=true)
 
-## Notice
-
-We understand that this algorithm is far from perfect, and are working towards a hybrid approach (using Machine Learning) to improve Anime4K. 
-
-The greatest difficulties encountered right now are caused by these issues that other media does not suffer from:
-
- - Lack of ground truth (No True 4K Anime)
- - Few true 1080p anime (Even some anime mastered at 1080p have sprites that were downsampled)
- - Non-1080p anime are upsampled to 1080p using simple algorithms, resulting in a blurry 1080p image. Our algorithm has to detect this. (Main reason why waifu2x does not work well on anime)
- - UV channels of anime are subsampled (4:2:0), which means the color channels of 1080p anime are in fact 540p, thus there is a lack of 1080p ground truth for the UV channels.
- - Simulating H.264/H.265 compression artifacts (for analysis and denoising) is not trivial and is relatively time-consuming.
- - Due to the workflow of animation studios and their lack of time/budget, resampling artifacts of individual sprites are present in many modern anime.
- - Speed (preferably real-time) is paramount, since we do not want to re-encode video each time the algorithm improves. There is also less risk of permanently altering original content.
- - So on...
-
-However, we still believe by shrinking the size of VDSR or FSRCNN and using an hybrid approach we can achieve good results.  
-Stay tuned for more info!
- 
-
-## v1.0 Release Candidate 2
-
-Improved speed.
-
-Performance is back on par with v0.9 Beta, with only insignificant loss in quality compared to v1.0 RC1. (3ms on RX Vega 64)
-
-Two more versions are included for less powerful GPUs.  
- - Anime4K_Fast (1.5ms)  
- - Anime4K_UltraFast (1ms) (For potato PCs)
-
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/1.0/RC2_Comparison.png)
-*Please view in full size on a 4K display for a correct comparison.*
-
-## v1.0 Release Candidate
-
-Reduced texture loss, aliasing and banding in Anime4K v1.0 RC at the cost of performance. It now takes 6ms. +2ms for line detection and +1ms for line targeted FXAA.
+## v3
+The monolithic Anime4K shader is broken into modular components, allowing customization for specific types of anime and/or personal taste.
 
 What's new:
- - A line detection algorithm.
- - Gradient maximization is only applied near lines using the line detector, instead of indiscriminately affecting the entire image. This has the effect of ignoring textures and out of focus elements.
-  - Finally, one iteration of targeted FXAA is applied on the lines using the line detector to reduce aliasing.
+ - A complete overhaul of the algorithm(s) for speed, quality and efficiency.
+ - Real-time, high quality line art CNN upscalers. *(6 variants)*
+ - Line art deblurring shaders. *("blind deconvolution" and DTD shader)*
+ - Denoising algorithms. *(Bilateral Mode and CNN variants)*
+ - Blind resampling artifact reduction algorithms. *(For badly resampled anime.)*
+ - Experimental line darkening and line thinning algorithm. *(For perceptual quality. We perceive thinner/darker lines as perceptually higher quality, even if it might not be the case.)*
+ 
+**[Installation Instructions for GLSL/MPV](GLSL_Instructions.md)**  
 
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/0.9-1.0/0_RC.png)
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/0.9-1.0/1_RC.png)
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/0.9-1.0/2_RC.png)
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/0.9-1.0/3_RC.png)
+[More information about each shader](https://github.com/bloc97/Anime4K/wiki).
 
-## GLSL Usage Instructions (MPV)
+## Real-Time Denoising (Experimental, WIP)
+The upcoming version 3.2 will focus on denoising. One version ([Heavy-CNN-L](https://github.com/bloc97/Anime4K/blob/master/glsl/Denoise/Anime4K_Denoise_Heavy_CNN_L.glsl)) of the experimental denoiser is released for preview. This version is for heavily compressed video. 
 
-This implementation is **cross platform**.
+Note that it will likely change/improve upon release. The main focus will be speed, while also keeping a good quality.  
+The new denoisers are/will be trained using a mix of the [SYNLA Dataset](https://github.com/bloc97/SYNLA-Dataset), [DIV2K Dataset](https://data.vision.ee.ethz.ch/cvl/DIV2K/), In-The-Wild Images and a tiny subset of the [Danbooru2019 Dataset](https://www.gwern.net/Danbooru2019).
 
-### [GLSL Installation](GLSL_Instructions.md)
 
-Note for developers: For performance, the GLSL shaders use the `POSTKERNEL` texture to store the gradient. You might need to make a backup of the `POSTKERNEL` texture before applying these shaders and restore it after if your other shaders or rendering engine uses the `POSTKERNEL` texture for other purposes. (In MPV's case, it gets ignored.)
+![Comparison](results/Comparisons/Bird_Denoise/Compare.png?raw=true)
 
-## HLSL Usage Instructions (MPC-BE with madVR)
+\**Note: Here it is evident that PSNR is not always the best indicator of perceived image quality. The waifu2x denoiser looks shaper, but hallucinates many artifacts, especially near line edges.*
 
-This implementation is **only for Windows**.
 
-This implementation is also **outdated**, the latest version is developped on GLSL.
+## Real-Time Upscalers Comparison
 
-### [HLSL Installation](HLSL_Instructions.md)  
+The new Anime4K upscalers were trained using the [SYNLA Dataset](https://github.com/bloc97/SYNLA-Dataset). They were designed to be extremely efficient at using GPU shader cores (extremely thin, densely connected CNNs). All three versions outperform NGU and FSRCNNX both in upscale quality and speed while also keeping the number of parameters low, as seen in the test image below. This test image was not part of the training dataset, nor is it used as validation for hyperparameter tuning. Performance benchmarks are based on 1080p->4K upscaling and were performed using an AMD Vega 64 GPU.
 
-Note for developers: For performance, the HLSL shaders use the Alpha channel to store the gradient. You might need to make a backup of the alpha channel before applying these shaders and restore it after if your rendering engine uses the alpha channel for other purposes. (In MPC-BE's case, it gets ignored.)
+The low resolution (LR) images are generated using the average area downscaling operation, which is the correct downscaling operation when we want to avoid using low pass filtering. Low pass filtering with bicubic/lanczos downscaling works well for natural images, but will destroy fine details in line art. The operation used is equivalent to `interpolation = INTER_AREA` in **OpenCV** and `-sws_flags area` in **FFmpeg**. <ins>Note that this operation is only equivalent to bilinear if and only if the downscaling ratio is exactly 2.</ins>
 
-## Java Usage Instructions (Standalone)
+The correctness of average area downscaling is especially apparent as Anime4K-L was trained on average area downscaling only, and it generalizes well on unseen bicubic/lanczos degradation (24.94->24.81dB), while FSRCNNX-8-LineArt and waifu2x-CUNet were trained on bicubic/lanczos degradation only and do not generalize well for the unseen average area downscaling. PSNR of (24.93->24.47dB) and (26.02->25.61dB) respectively. Bicubic/lanczos downscaling preserves edge sharpess better than average area downscaling. This artificial sharpness does not represent well the distribution of true LR images (images that were originally low resolution and did not pass through a bicubic/lanczos filter). [Link to results file.](https://github.com/bloc97/Anime4K/blob/master/results/Comparisons/Bird_FFmpeg/RESULTS.txt)
 
-This implementation is **outdated**, the latest version is developped on GLSL.
+It has also come to our attention that many anime might have been suboptimally downscaled using the aforementioned low pass + bicubic method, as it is the default operation of FFmpeg. We will tackle this problem in v3.3 (after the v3.2 denoising update) by training the neural network with many different downscaling operations.
 
-### [Java Installation](Java_Instructions.md)
+#### Comparison Table
+First in each category is highlighted in brackets.
 
-Click on the link above to read Java version installation and usage instructions.
+Algorithm | x2 PSNR (dB) ↑ | Runtime @4K (ms) ↓ | Parameters ↓
+-- | -- | -- | --
+[Bilinear](results/Comparisons/Bird/Bilinear.png) | 23.03 | 0 | 0
+[ravu-r4](results/Comparisons/Bird/ravu-r4.png) | 24.09 | 3.6 | 41.4k
+[FSRCNNX-16](results/Comparisons/Bird/FSRCNNX-16.png) | 24.57 | 30.4 | 10.5k
+[NGU-Sharp-High](results/Comparisons/Bird/NGU-Sharp-High.png) | 24.69 | 11 | ?
+[Anime4K-M](results/Comparisons/Bird/Anime4K-M.png) | 24.73 | **[1.5]** | **[1.6k]**
+[Anime4K-L](results/Comparisons/Bird/Anime4K-L.png) | 24.94 | 2.5 | 2.9k
+[Anime4K-UL](results/Comparisons/Bird/Anime4K-UL.png) | **[25.14]** | 10.7 | 15.9k
+[waifu2x-CUNet](results/Comparisons/Bird/waifu2x-CUNet.png) | **[25.61]**\* | >1000 | 1283.3k
+
+[Link to results file](https://github.com/bloc97/Anime4K/blob/master/results/Comparisons/Bird/RESULTS.txt)
+
+\**waifu2x is technically first in PSNR, but it is not a realtime algorithm and is 80 times larger than Anime4K-UL. It is included only for comparison purposes.*
+
+*The complete images from this comparison can be found under [results/Comparisons/Bird](results/Comparisons/Bird).*
+
+![Comparison](results/Comparisons/Bird/Compare.png?raw=true)
+
+\*FSRCNNX-56 failed to launch when playing back 1080p video.  
 
 ## Projects that use Anime4K
+*Note that they might be using an outdated version of Anime4K. There have been significant quality improvements since v3.*
  - https://github.com/yeataro/TD-Anime4K (Anime4K for TouchDesigner)
  - https://github.com/keijiro/UnityAnime4K (Anime4K for Unity)
  - https://github.com/net2cn/Anime4KSharp (Anime4K Re-Implemented in C#)
  - https://github.com/andraantariksa/Anime4K-rs (Anime4K Re-Implemented in Rust)
+ - https://github.com/TianZerL/Anime4KCPP (Anime4K & more algorithms implemented in C++)
  - https://github.com/k4yt3x/video2x (Anime Video Upscaling Pipeline)
+ 
+## Acknowledgements
+![CV](https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/OpenCV_Logo_with_text_svg_version.svg/180px-OpenCV_Logo_with_text_svg_version.svg.png)
+![TF](https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/TensorFlowLogo.svg/220px-TensorFlowLogo.svg.png)
+![Keras](https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Keras_logo.svg/180px-Keras_logo.svg.png)
+![Torch](https://upload.wikimedia.org/wikipedia/en/f/f5/Torch_2014_logo.png)
 
+![mpv](https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Mpv_icon.png/100px-Mpv_icon.png)
+![MPC](https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Media_Player_Classic_logo.png/64px-Media_Player_Classic_logo.png)
 
-## Pseudo-Preprint Preview
+Many thanks to the [OpenCV](https://github.com/opencv/opencv), [TensorFlow](https://github.com/tensorflow/tensorflow), [Keras](https://github.com/keras-team/keras) and [Torch](https://github.com/torch/torch7) groups and contributors. This project would not have been possible without the existence of high quality, open source machine learning libraries.
 
-### [Read Full Pseudo-Preprint](Preprint.md)
+I would also want to specially thank the creators of [VDSR](https://cv.snu.ac.kr/research/VDSR/) and [FSRCNN](http://mmlab.ie.cuhk.edu.hk/projects/FSRCNN.html), in addition to the open source projects [waifu2x](https://github.com/nagadomi/waifu2x) and [FSRCNNX](https://github.com/igv/FSRCNN-TensorFlow) for sparking my interest in creating this project. I am also extending my gratitude to the contributors of [mpv](https://github.com/mpv-player/mpv) and [MPC-HC](https://mpc-hc.org/)/[BE](https://sourceforge.net/projects/mpcbe/) for their efforts on creating excellent media players with endless customization options.  
+Furthermore, I want to thank the people who contributed to this project in any form, be it by reporting bugs, submitting suggestions, helping others' issues or submitting code. I will forever hold you in high regard.
 
-B. Peng  
-August 2019
+I also wish to express my sincere gratitude to the people of [Université de Montréal](https://www.umontreal.ca/), [DIRO](https://diro.umontreal.ca/accueil/), [LIGUM](http://www.ligum.umontreal.ca/) and [MILA](https://mila.quebec/en/) for providing so many opportunities to students (including me), providing the necessary infrastructure and fostering an excellent learning environment.
 
-*Ad perpetuam memoriam of all who perished in the Kyoto Animation arson attack.*
+I would also like to thank the greater open source community, in which the assortment of concrete examples and code were of great help.
 
-### Table of Contents
+Finally, but not least, infinite thanks to my family, friends and professors for providing financial, technical, social support and expertise for my ongoing learning journey during these hard times. Your help has been beyond description, really.
 
-- [Abstract](Preprint.md#abstract)  
-- [Introduction](Preprint.md#introduction)  
-- [Proposed Method](Preprint.md#proposed-method)  
-- [Results and Upscale Examples](Preprint.md#results)  
-- [Discussion](Preprint.md#discussion)  
-- [Analysis and Comparison to Other Algorithms](Preprint.md#analysis)  
-
-### Abstract
-
-We present a state-of-the-art high-quality real-time SISR algorithm designed to work with Japanese animation and cartoons that is extremely fast *(~3ms with Vega 64 GPU)*, temporally coherent, simple to implement *(~100 lines of code)*, yet very effective. We find it surprising that this method is not currently used 'en masse', since the intuition leading us to this algorithm is very straightforward.  
-Remarkably, the proposed method does not use any machine-learning or statistical approach, and is tailored to content that puts importance to well defined lines/edges while tolerates a sacrifice of the finer textures. The proposed algorithm can be quickly described as an iterative algorithm that treats color information as a heightmap and 'pushes' pixels towards probable edges using gradient-ascent. This is very likely what learning-based approaches are already doing under the hood (eg. VDSR<sup>**[1]**</sup>, waifu2x<sup>**[2]**</sup>).
-
-## FAQ
-
-### Why not just use waifu2x
-
-waifu2x is too slow for real time applications.
-
-### Why not just use madVR with NGU
-
-NGU is proprietary, this algorithm is licensed under MIT.
-
-### How does FSRCNNX compare to this
-
-Since it performs poorly (perceptually, for anime) compared to other algorithms, it was left out of our visual comparisons.
-
-![ComparisonRC](https://raw.githubusercontent.com/bloc97/Anime4K/master/results/Comparisons/FSRCNNX.png)
-
-*Note: FSRCNNX was not specifically trained/designed for anime. It is however a good general-purpose SISR algorithm for video.*
-
-### Where are the PSNR/SSIM metrics
-
-There are no ground truths of 4K anime.
-
-### Why not do PSNR/SSIM on 480p->720p upscaling
-
-[Story Time](FAQ_Detail.md)
-
-Comparing PSNR/SSIM on 480p->720p upscales does not prove and is not a good indicator of 1080p->2160p upscaling quality. (Eg. poor performance of waifu2x on 1080p anime) 480p anime images have a lot of high frequency information (lines might be thinner than 1 pixel), while 1080p anime images have a lot of redundant information. 1080p->2160p upscaling on anime is thus objectively easier than 480p->720p.
-
-### I think the results are worse than \<x>
-
-Surely some people like sharper edges, some like softer ones. Do try it yourself on a few anime before reaching a definite conclusion. People *tend* to prefer sharper edges. Also, seeing the comparisons on a 1080p screen is not representative of the final results on a 4K screen, the pixel density and sharpness of the final image is simply not comparable.
-
-### Note for those who think this is not a 'upscaling' algorithm.
-
-[Explanation](Upscaling.md)
-
-TL;DR
-
-Sharpening, De-Blurring and Super-Resolution are equivalent.  
-Anime4K can de-blur, and is equivalent to a SR algorithm.  
-A Super-Resolution algorithm can do upscaling.  
-Thus, Anime4K is an upscaling algorithm.
+*This list is not final, as the project is far from done. Any future acknowledgements will be promptly added.*
